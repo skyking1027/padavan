@@ -249,25 +249,38 @@ get_zttag() {
 	fi
 }
 
-# 下载
 dowload_zero() {
-  tag="$1"
-  logger -t "【zerotier】" "开始下载 $tag"
-  for proxy in $github_proxys; do
-    url="${proxy}https://github.com/lmq8267/ZeroTierOne/releases/download/${tag}/zerotier-one"
-    if curl -Lko "$PROG" "$url" || wget --no-check-certificate -O "$PROG" "$url"; then
-      chmod +x "$PROG"
-      logger -t "【zerotier】" "下载成功"
-      break
-    else
-      logger -t "【zerotier】" "下载失败，尝试CDN"
-      curl -Lkso "$PROG" "https://fastly.jsdelivr.net/gh/lmq8267/ZeroTierOne@master/install/${tag}/zerotier-one"
-      chmod +x "$PROG"
-      break
-    fi
-  done
+	tag="$1"
+	logger -t "【zerotier】" "开始下载 https://github.com/lmq8267/ZeroTierOne/releases/download/${tag}/zerotier-one 到 $PROG"
+ 	bin_path=$(dirname "$PROG")
+	[ ! -d "$bin_path" ] && mkdir -p "$bin_path"
+	for proxy in $github_proxys ; do
+ 	length=$(wget --no-check-certificate -T 5 -t 3 "${proxy}https://github.com/lmq8267/ZeroTierOne/releases/download/${tag}/zerotier-one" -O /dev/null --spider --server-response 2>&1 | grep "[Cc]ontent-[Ll]ength" | grep -Eo '[0-9]+' | tail -n 1)
+        length=`expr $length + 512000`
+	length=`expr $length / 1048576`
+ 	zt_size0="$(check_disk_size $bin_path)"
+ 	[ ! -z "$length" ] && logger -t "【zerotier】" "程序大小 ${length}M， 程序路径可用空间 ${zt_size0}M "
+	curl -Lko "$PROG" "${proxy}https://github.com/lmq8267/ZeroTierOne/releases/download/${tag}/zerotier-one" || wget --no-check-certificate -O "$PROG" "${proxy}https://github.com/lmq8267/ZeroTierOne/releases/download/${tag}/zerotier-one" || curl -Lkso "$PROG" "https://fastly.jsdelivr.net/gh/lmq8267/ZeroTierOne@master/install/${tag}/zerotier-one" || wget --no-check-certificate -q -O "$PROG" "https://fastly.jsdelivr.net/gh/lmq8267/ZeroTierOne@master/install/${tag}/zerotier-one"
+	if [ "$?" = 0 ] ; then
+		chmod +x $PROG
+		if [[ "$($PROG -h 2>&1 | wc -l)" -gt 2 ]] ; then
+			logger -t "【zerotier】" "$PROG 下载成功"
+			zt_ver=$($PROG -version | sed -n '1p')
+			if [ -z "$zt_ver" ] ; then 
+				nvram set zerotier_ver=""
+			else
+				nvram set zerotier_ver=$zt_ver
+			fi
+			break
+       	else
+	   		logger -t "【zerotier】" "下载不完整，请手动下载 ${proxy}https://github.com/lmq8267/ZeroTierOne/releases/download/${tag}/zerotier-one 上传到  $PROG"
+			rm -rf $PROG
+	  	fi
+	else
+		logger -t "【zerotier】" "下载失败，请手动下载 ${proxy}https://github.com/lmq8267/ZeroTierOne/releases/download/${tag}/zerotier-one 上传到  $PROG"
+   	fi
+	done
 }
-
 
 update_zero() {
 	get_zttag
