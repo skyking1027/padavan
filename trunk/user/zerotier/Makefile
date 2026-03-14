@@ -1,3 +1,13 @@
+SRC_NAME = ZeroTierOne
+THISDIR = $(shell pwd)
+
+all:
+
+extract_test:
+
+config_test:
+clean:
+
 romfs:
 	$(ROMFSINST) -p +x $(THISDIR)/zerotier-one /usr/bin/zerotier-one
 	$(ROMFSINST) -p +x $(THISDIR)/zerotier.sh /usr/bin/zerotier.sh
